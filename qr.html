@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classic Cafe — دروستکردنی QR بۆ مێزەکان</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f6f1ea;--card:#fff;--ink:#2b2118;--muted:#8a7a68;--accent:#8b5e34;--accent-dark:#6e4726;--line:#e6dccc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,'Segoe UI',Arial,sans-serif;padding:16px}
+h1{font-size:19px;color:var(--accent-dark);text-align:center}
+.setup{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;max-width:420px;margin:0 auto 20px}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:15px;cursor:pointer;width:100%;margin-top:12px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;max-width:900px;margin:0 auto}
+.tcard{background:#fff;border:2px solid var(--accent);border-radius:16px;padding:18px;text-align:center}
+.tcard b{display:block;font-size:16px;color:var(--accent-dark);margin-bottom:8px}
+.tcard .qr{display:inline-block;padding:8px;background:#fff}
+.tcard .sub{font-size:11px;color:var(--muted);margin-top:6px}
+@media print{
+  .setup, .no-print{display:none}
+  #grid{grid-template-columns:repeat(2,1fr)}
+  .tcard{break-inside:avoid;border-color:#000}
+}
+</style>
+</head>
+<body>
+<h1>☕ دروستکردنی QR بۆ مێزەکان</h1>
+<div class="setup">
+  <label>لینکی ماڵپەڕەکەت (GitHub Pages)</label>
+  <input id="baseUrl" placeholder="https://username.github.io/classic-cafe/">
+  <label>ژمارەی مێزەکان</label>
+  <input id="tableCount" type="number" placeholder="نموونە: 10" value="10">
+  <button onclick="generate()">دروستکردنی QR</button>
+  <button class="no-print" onclick="window.print()" style="background:#e9ddca;color:var(--accent-dark)">پرینتکردنی هەموو</button>
+</div>
+<div id="grid"></div>
+<script>
+function generate(){
+  let base = document.getElementById('baseUrl').value.trim();
+  if(!base){ alert('تکایە لینکی ماڵپەڕەکەت بنووسە'); return; }
+  if(!base.endsWith('/')) base += '/';
+  const count = parseInt(document.getElementById('tableCount').value) || 0;
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for(let i=1; i<=count; i++){
+    const link = base + 'menu.html?table=' + i;
+    const card = document.createElement('div');
+    card.className='tcard';
+    card.innerHTML = `<b>مێز ${i}</b><div class="qr" id="qr${i}"></div><div class="sub">سکاین بکە بۆ داواکاری</div>`;
+    grid.appendChild(card);
+    new QRCode(document.getElementById('qr'+i), { text: link, width: 180, height: 180, colorDark:"#2b2118", colorLight:"#ffffff" });
+  }
+}
+</script>
+</body>
+</html>

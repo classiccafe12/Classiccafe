@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classic Cafe — Menu</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --bg:#161210; --card:#211b17; --ink:#f3e9dd; --muted:#b7a794;
+  --gold:#c9974f; --gold2:#e8c485; --line:#3a2f27; --bad:#c0503a;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:70px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Tahoma,Arial,sans-serif;min-height:100%;overflow-x:hidden}
+
+/* Splash */
+#splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 20%,#2a1f16,#0f0c0a 75%);overflow:hidden}
+.bubble{position:absolute;border-radius:50%;background:rgba(201,151,79,.12);animation:float 9s ease-in-out infinite}
+.splash-content{position:relative;z-index:2;text-align:center;padding:20px;max-width:360px}
+#cafePhoto{width:100%;max-width:260px;border-radius:16px;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.cup-wrap{position:relative;display:inline-block;margin-bottom:14px}
+.cup{font-size:56px;animation:bob 3s ease-in-out infinite}
+.steam{position:absolute;top:-10px;left:50%;width:3px;height:24px;background:rgba(255,255,255,.5);border-radius:3px;
+  animation:steam 2.2s ease-in infinite;filter:blur(2px)}
+.steam:nth-child(2){left:42%;animation-delay:.5s}
+.steam:nth-child(3){left:58%;animation-delay:1s}
+.shimmer{font-size:24px;font-weight:800;margin:6px 0;
+  background:linear-gradient(90deg,var(--gold) 0%,var(--gold2) 25%,#fff 50%,var(--gold2) 75%,var(--gold) 100%);
+  background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;
+  opacity:0;transform:translateY(10px);animation:fadein .8s ease forwards, shine 3.5s linear infinite 1s}
+.splash-sub{color:var(--muted);font-size:14px;line-height:1.7;opacity:0;animation:fadein .8s ease .3s forwards}
+#enterBtn{margin-top:20px;background:linear-gradient(135deg,var(--gold),#a97b3a);color:#1b1512;border:none;
+  padding:13px 32px;border-radius:30px;font-size:15px;font-weight:bold;cursor:pointer;
+  box-shadow:0 8px 20px rgba(201,151,79,.35);opacity:0;animation:fadein .8s ease .6s forwards}
+#enterBtn:active{transform:scale(.95)}
+@keyframes fadein{to{opacity:1;transform:translateY(0)}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes steam{0%{opacity:0;transform:translateY(0) scaleX(1)}30%{opacity:.7}100%{opacity:0;transform:translateY(-30px) scaleX(2)}}
+@keyframes shine{to{background-position:200% center}}
+@keyframes float{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(-40px) translateX(20px)}}
+
+/* App */
+#app{display:none}
+header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#1b1512,#161210 90%);
+  padding:calc(14px + env(safe-area-inset-top,0px)) 16px 10px;text-align:center;border-bottom:1px solid var(--line)}
+header .logo{font-size:24px;letter-spacing:1px;color:var(--gold);font-weight:bold;margin:0}
+header .tag{color:var(--muted);font-size:12px;margin-top:2px}
+.langbar{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.langbar button{border:1px solid var(--gold);background:transparent;color:var(--gold);padding:5px 14px;border-radius:16px;font-size:12px;cursor:pointer}
+.langbar button.active{background:var(--gold);color:#1b1512;font-weight:bold}
+main{max-width:680px;margin:0 auto;padding:16px 16px 90px;perspective:800px}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+.cat-tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 8px;text-align:center;
+  cursor:pointer;transform-style:preserve-3d;transition:transform .12s ease;will-change:transform}
+.cat-tile .emoji{font-size:30px;display:block;margin-bottom:6px;transform:translateZ(20px)}
+.cat-tile .cname{font-size:14px;font-weight:bold;color:var(--ink);transform:translateZ(20px);display:block}
+section.menu-sec{margin-bottom:28px;scroll-margin-top:130px}
+.sec-title{display:flex;align-items:center;gap:8px;font-size:19px;color:var(--gold);font-weight:bold;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--gold)}
+.item{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;position:relative}
+.item.out{opacity:.5}
+.item img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex:0 0 auto}
+.item .noimg{width:64px;height:64px;border-radius:10px;background:#2c2420;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto}
+.item .info{flex:1}
+.item .name{font-size:15.5px;font-weight:bold;color:var(--ink)}
+.item .outtag{color:var(--bad);font-size:11px;font-weight:bold}
+.item .price{color:var(--gold);font-weight:bold;font-size:14px;white-space:nowrap}
+.item button.addbtn{background:var(--gold);color:#1b1512;border:none;width:30px;height:30px;border-radius:8px;font-size:18px;cursor:pointer}
+.item button.addbtn:disabled{opacity:.3}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:20px 0 calc(20px + env(safe-area-inset-bottom,0px))}
+
+/* Cart bar & call button */
+#cartBar{position:fixed;bottom:0;right:0;left:0;background:var(--gold);color:#1b1512;padding:14px;text-align:center;
+  font-weight:bold;cursor:pointer;z-index:50;display:none;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+#callBtn{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:16px;background:var(--card);
+  border:1px solid var(--gold);color:var(--gold);border-radius:50%;width:52px;height:52px;font-size:22px;z-index:49;cursor:pointer}
+.tablewarn{background:#3a2018;border:1px solid var(--bad);color:#f0c9be;padding:10px;border-radius:10px;font-size:13px;text-align:center;margin-bottom:14px}
+
+/* Reviews */
+#reviewSec{text-align:center;padding:10px 0}
+#stars{font-size:32px;letter-spacing:4px}
+#stars span{cursor:pointer;color:#4a3d2f}
+#stars span.on{color:var(--gold)}
+#reviewText{width:100%;max-width:320px;padding:9px;border-radius:8px;border:1px solid var(--line);background:#0f0c0a;color:var(--ink);margin-top:10px;font-family:inherit}
+#reviewSec button{margin-top:10px;background:var(--gold);color:#1b1512;border:none;padding:9px 22px;border-radius:20px;font-weight:bold;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="bubble" style="width:120px;height:120px;top:10%;left:10%"></div>
+  <div class="bubble" style="width:180px;height:180px;bottom:5%;right:5%;animation-delay:2s"></div>
+  <div class="splash-content">
+    <!-- بۆ دانانی وێنەی ڕاستەقینەی کافێ: فایلێک بە ناوی cafe-photo.jpg لەگەڵ ئەم فایلە دابنێ -->
+    <img id="cafePhoto" src="cafe-photo.jpg" onerror="this.style.display='none';document.getElementById('cupFallback').style.display='inline-block'">
+    <div class="cup-wrap" id="cupFallback" style="display:none">
+      <span class="steam"></span><span class="steam"></span><span class="steam"></span>
+      <span class="cup">☕</span>
+    </div>
+    <h1 class="shimmer">بەخێربێیت بۆ Classic Cafe</h1>
+    <p class="splash-sub">شوێنێکی گەرم بۆ چێژتنی چێژترین کاتەکانت<br>هەموو بەرهەمەکانمان بە خۆشحاڵییەوە ئامادەن بۆت 🌿</p>
+    <button id="enterBtn">بینینی مینیو</button>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <p class="logo">☕ Classic Cafe</p>
+    <p class="tag" id="tagline">مینیوی کافێ</p>
+    <div class="langbar">
+      <button data-l="ku" class="active">کوردی</button>
+      <button data-l="ar">العربية</button>
+      <button data-l="en">English</button>
+    </div>
+  </header>
+  <main>
+    <div id="tableWarnBox"></div>
+    <div id="catGrid" class="cat-grid"></div>
+    <div id="sections"></div>
+
+    <div id="reviewSec">
+      <h3 id="reviewTitle">ڕای خۆت بڵێ</h3>
+      <div id="stars">☆☆☆☆☆</div>
+      <br>
+      <textarea id="reviewText" rows="3" placeholder="پێشنیار یان تێبینی..."></textarea><br>
+      <button onclick="sendReview()">ناردن</button>
+    </div>
+  </main>
+  <footer>Classic Cafe © 2026</footer>
+</div>
+
+<button id="callBtn" onclick="callWaiter()" title="بانگکردنی کارمەند">🔔</button>
+<div id="cartBar" onclick="sendMyOrder()"></div>
+
+<script>
+/* دەبێت هەمان زانیارییەکانی فایلی سیستەمی کارمەند بێت */
+const firebaseConfig = {
+  apiKey: "AIzaSyAjP_hkC4-fSwEFdlV3NmtaJxip3LKVJZ4",
+  authDomain: "classic-cafe-5a398.firebaseapp.com",
+  databaseURL: "https://classic-cafe-5a398-default-rtdb.firebaseio.com",
+  projectId: "classic-cafe-5a398"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const tableNum = new URLSearchParams(window.location.search).get('table') || '';
+
+const CATS = [
+  {key:'قاوە', emoji:'☕', ku:'قاوە', ar:'القهوة', en:'Coffee'},
+  {key:'میلک شەیک', emoji:'🥤', ku:'میلک شەیک', ar:'ميلك شيك', en:'Milkshake'},
+  {key:'تورتە', emoji:'🍰', ku:'تورتە', ar:'كيك', en:'Cake'},
+  {key:'مۆکتێل', emoji:'🍹', ku:'مۆکتێل', ar:'موكتيل', en:'Mocktail'},
+  {key:'مینی پانکێک', emoji:'🥞', ku:'مینی پانکێک', ar:'ميني بان كيك', en:'Mini Pancake'},
+  {key:'وافڵ', emoji:'🧇', ku:'وافڵ', ar:'وافل', en:'Waffle'},
+  {key:'کریپ', emoji:'🌯', ku:'کریپ', ar:'كريب', en:'Crepe'}
+];
+const TXT = {
+  tagline:{ku:'مینیوی کافێ',ar:'قائمة المقهى',en:'Cafe Menu'},
+  review:{ku:'ڕای خۆت بڵێ',ar:'شاركنا رأيك',en:'Leave a review'},
+  noTable:{ku:'ژمارەی مێز دیار نییە — ئەم لینکە لە بارکۆدی مێزەکەت سکان بکە.',
+           ar:'رقم الطاولة غير محدد — يرجى مسح رمز الطاولة.',
+           en:"No table number — please scan your table's QR code."},
+  closed:{ku:'ئێستا ناتوانیت داواکاری بنێریت. تکایە داوا لە کارمەند بکە مێزەکەت چالاک بکات.',
+          ar:'لا يمكنك الطلب الآن. يرجى مطالبة الموظف بتفعيل الطاولة.',
+          en:"You can't order right now. Please ask staff to activate your table."}
+};
+
+let lang='ku';
+let products=[];
+let myCart=[];
+let tableActive=false;
+let myRating=0;
+
+document.getElementById('enterBtn').onclick = function(){
+  document.getElementById('splash').style.display='none';
+  document.getElementById('app').style.display='block';
+};
+document.querySelectorAll('.langbar button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.langbar button').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    lang=b.getAttribute('data-l');
+    document.documentElement.dir = lang==='en' ? 'ltr':'rtl';
+    render();
+  };
+});
+
+db.ref('products').on('value', function(snap){
+  const val = snap.val()||{};
+  products = Object.keys(val).map(function(k){ return Object.assign({id:k}, val[k]); });
+  render();
+});
+if(tableNum){
+  db.ref('tables/'+tableNum+'/active').on('value', function(snap){
+    tableActive = !!snap.val();
+    render();
+  });
+}
+
+function render(){
+  document.getElementById('tagline').textContent = TXT.tagline[lang];
+  document.getElementById('reviewTitle').textContent = TXT.review[lang];
+
+  const warnBox=document.getElementById('tableWarnBox');
+  if(!tableNum) warnBox.innerHTML = '<div class="tablewarn">'+TXT.noTable[lang]+'</div>';
+  else if(!tableActive) warnBox.innerHTML = '<div class="tablewarn">'+TXT.closed[lang]+'</div>';
+  else warnBox.innerHTML = '';
+
+  const grid=document.getElementById('catGrid');
+  let gridHtml='';
+  CATS.forEach(function(c){
+    gridHtml += '<div class="cat-tile" onclick="scrollToCat(\''+c.key.replace(/'/g,"\\'")+'\')">'
+      + '<span class="emoji">'+c.emoji+'</span><span class="cname">'+c[lang]+'</span></div>';
+  });
+  grid.innerHTML = gridHtml;
+  attachTilt();
+
+  const sec=document.getElementById('sections');
+  let secHtml='';
+  const knownCatKeys = CATS.map(function(c){return c.key;});
+  const extraCats = [...new Set(products.map(function(p){return p.cat;}))].filter(function(c){return !knownCatKeys.includes(c);});
+  const allCats = CATS.concat(extraCats.map(function(c){return {key:c, emoji:'🍽️', ku:c, ar:c, en:c};}));
+
+  allCats.forEach(function(c){
+    const items = products.filter(function(p){return p.cat===c.key;});
+    if(!items.length) return;
+    secHtml += '<section class="menu-sec" id="cat-'+cssId(c.key)+'">'
+      + '<div class="sec-title"><span>'+c.emoji+'</span><span>'+c[lang]+'</span></div>';
+    items.forEach(function(p){
+      const out = p.available===false;
+      const canOrder = tableNum && tableActive && !out;
+      secHtml += '<div class="item '+(out?'out':'')+'">'
+        + (p.image ? '<img src="'+p.image+'">' : '<div class="noimg">☕</div>')
+        + '<div class="info"><div class="name">'+p.name+'</div>'
+        + (out?'<div class="outtag">'+({ku:'نەماوە',ar:'غير متوفر',en:'Out of stock'}[lang])+'</div>':'')
+        + '</div><div class="price">'+p.price+'</div>'
+        + '<button class="addbtn" '+(canOrder?'':'disabled')+' onclick="addToOrder(\''+p.id+'\')">+</button>'
+        + '</div>';
+    });
+    secHtml += '</section>';
+  });
+  sec.innerHTML = secHtml;
+}
+function cssId(s){ return s.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g,'_'); }
+function scrollToCat(key){
+  const el=document.getElementById('cat-'+cssId(key));
+  if(el) el.scrollIntoView({behavior:'smooth'});
+}
+function attachTilt(){
+  document.querySelectorAll('.cat-tile').forEach(function(t){
+    t.addEventListener('pointermove', function(e){
+      const r=t.getBoundingClientRect();
+      const x=(e.clientX-r.left)/r.width-0.5, y=(e.clientY-r.top)/r.height-0.5;
+      t.style.transform='rotateY('+(x*14)+'deg) rotateX('+(-y*14)+'deg) translateY(-3px)';
+    });
+    t.addEventListener('pointerleave', function(){ t.style.transform='none'; });
+  });
+}
+
+/* سەبەتەی داواکاری */
+function addToOrder(id){
+  const p=products.find(function(x){return x.id===id;});
+  if(!p) return;
+  const found=myCart.find(function(x){return x.id===id;});
+  if(found) found.qty++;
+  else myCart.push({id:id, name:p.name, price:p.price, qty:1});
+  updateCartBar();
+}
+function updateCartBar(){
+  const bar=document.getElementById('cartBar');
+  const count=myCart.reduce(function(s,i){return s+i.qty;},0);
+  const total=myCart.reduce(function(s,i){return s+i.qty*i.price;},0);
+  bar.style.display = count ? 'block' : 'none';
+  const lbl = {ku:'ناردنی داواکاری',ar:'إرسال الطلب',en:'Send order'}[lang];
+  bar.textContent = lbl+' ('+count+' — '+total+' د.ع)';
+}
+function sendMyOrder(){
+  if(!myCart.length) return;
+  if(!tableNum || !tableActive){ alert(TXT.closed[lang]); return; }
+  const total=myCart.reduce(function(s,i){return s+i.qty*i.price;},0);
+  db.ref('orders').push({
+    table: tableNum,
+    name: '',
+    items: myCart.map(function(i){ return {name:i.name, price:i.price, qty:i.qty}; }),
+    total: total,
+    status: 'pending',
+    time: new Date().toISOString()
+  });
+  myCart=[];
+  updateCartBar();
+  alert({ku:'داواکاریەکەت نێردرا بۆ کارمەند! سوپاس 🌿',ar:'تم إرسال طلبك! شكراً 🌿',en:'Your order was sent! Thank you 🌿'}[lang]);
+}
+function callWaiter(){
+  if(!tableNum){ alert(TXT.noTable[lang]); return; }
+  db.ref('staffCalls').push({table:tableNum, status:'pending', time:new Date().toISOString()});
+  alert({ku:'کارمەند ئاگادار کرایەوە، بۆ لات دێت 🙏',ar:'تم إبلاغ الموظف، سيأتي إليك 🙏',en:"Staff notified, they'll be right with you 🙏"}[lang]);
+}
+
+/* ڕیفیو */
+(function(){
+  const starsEl=document.getElementById('stars');
+  starsEl.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const s=document.createElement('span');
+    s.textContent='☆';
+    s.onclick=(function(n){ return function(){
+      myRating=n;
+      const all=starsEl.children;
+      for(let j=0;j<5;j++){ all[j].textContent = (j<n)?'★':'☆'; all[j].classList.toggle('on', j<n); }
+    };})(i);
+    starsEl.appendChild(s);
+  }
+})();
+function sendReview(){
+  if(!myRating){ alert({ku:'تکایە ئەستێرەکان هەڵبژێرە',ar:'يرجى اختيار التقييم',en:'Please choose a rating'}[lang]); return; }
+  db.ref('reviews').push({
+    table: tableNum||'-',
+    stars: myRating,
+    comment: document.getElementById('reviewText').value,
+    time: new Date().toISOString()
+  });
+  document.getElementById('reviewText').value='';
+  alert({ku:'سوپاس بۆ ڕایەکەت! 🌿',ar:'شكراً لرأيك! 🌿',en:'Thanks for your feedback! 🌿'}[lang]);
+}
+</script>
+</body>
+</html>
